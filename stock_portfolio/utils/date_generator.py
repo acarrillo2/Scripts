@@ -21,7 +21,7 @@ def generate_t6_month_end_date_strings():
     for i in range(6):
         month_end_day = calendar.monthrange(year, month)[1]
         month_end_date = datetime(year, month, month_end_day)
-        last_fridayrelativedelta(day=31, weekday=FR(-1))
+        #last_fridayrelativedelta(day=31, weekday=FR(-1))
         t6_month_end.append(month_end_date)
         if month == 12:
             month = 1

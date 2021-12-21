@@ -5,6 +5,9 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
 import matplotlib.dates as mdates
 
+from jinja2 import Environment, FileSystemLoader
+from weasyprint import HTML
+
 def filter_t8_weeks_stock_quotes(df):
     df_max_date = df
     df_max_date['Week_Number'] = df_max_date.index.isocalendar().week
@@ -29,7 +32,7 @@ def aggregate_dataframe(df):
 
 
 def save_graph(df, title):
-    fig, ax = plt.subplots(1, 1, figsize=(10, 8))
+    fig, ax = plt.subplots(1, 1, figsize=(6, 4))
     df.plot(kind='line', title=title,
             color='blue', ax=ax)
 
@@ -47,6 +50,9 @@ def save_graph(df, title):
 
 def main():
     print("start")
+    plt.close('all')
+    env = Environment(loader=FileSystemLoader('/'))
+    template = env.get_template("/Users/austin/workspace/Scripts/src/Scripts/stock_portfolio/html/master_template.html")
     file_path = "stock_portfolio/portfolio_data/portfolio_small.csv"
     six_months_ago = date_generator.get_six_months_ago().strftime("%Y-%m-%d")
     df = data_retriever.gather_stock_quotes(six_months_ago, file_path)
@@ -62,6 +68,23 @@ def main():
     df_monthly_agg = aggregate_dataframe(df_monthly_portfolio)
     print(df_monthly_agg)
     save_graph(df_monthly_agg, 'T6_Monthly_Performance')
+
+    template_vars = {"title" : "Stock Report",
+                "weekly_portfolio_performance": "Placeholder",
+                "weekly_stock_performance": "Placeholder",
+                "monthly_stock_performance": "Placeholder",
+                "monthly_stock_performance": "Placeholder"}
+    # template_vars = {"title" : "Stock Report",
+    #             "weekly_portfolio_performance": df_us_daily.to_html(index=False),
+    #             "weekly_stock_performance": df_us_weekly.to_html(index=False),
+    #             "monthly_stock_performance": df_wa_daily.to_html(index=False),
+    #             "monthly_stock_performance": df_wa_weekly.to_html(index=False)}
+    html_out = template.render(template_vars)
+    HTML(
+        string=html_out, 
+        base_url='/Users/austin/workspace/Scripts/src/Scripts/stock_portfolio/').write_pdf("/Users/austin/workspace/Scripts/src/Scripts/stock_portfolio/report.pdf", 
+        stylesheets=['/Users/austin/workspace/Scripts/src/Scripts/stock_portfolio/css/style.css']
+        )
 
     
 
