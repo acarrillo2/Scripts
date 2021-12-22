@@ -30,19 +30,30 @@ def aggregate_dataframe(df):
     df = df[["Value"]]
     return df.groupby(df.index).sum()
 
-def build_portfolio_performance(df):
-    df_portfolio = df.reset_index()
-    df_portfolio.drop(inplace=True, columns=['index'])
-    df_portfolio['vs last'] = 0
-    df_portfolio['vs last %'] = 0
+def build_vs_last_columns(df):
+    df_vs_last = df.reset_index()
+    df_vs_last.drop(inplace=True, columns=['index'])
+    df_vs_last['vs last'] = 0
+    df_vs_last['vs last %'] = 0
     for i in range(len(df)):
         if i == 0:
             pass
         else:
-            df_portfolio.loc[i, 'vs last'] = df_portfolio.loc[i, 'Value'] - df_portfolio.loc[i-1, 'Value']
-            df_portfolio.loc[i, 'vs last %'] = round(((df_portfolio.loc[i, 'Value'] - df_portfolio.loc[i-1, 'Value']) / df_portfolio.loc[i-1, 'Value']) * 100, 1)
-    return df_portfolio.tail(1)
+            df_vs_last.loc[i, 'vs last'] = df_vs_last.loc[i, 'Value'] - df_vs_last.loc[i-1, 'Value']
+            df_vs_last.loc[i, 'vs last %'] = ((df_vs_last.loc[i, 'Value'] - df_vs_last.loc[i-1, 'Value']) / df_vs_last.loc[i-1, 'Value'])
+    return df_vs_last
 
+def build_portfolio_performance(df):
+    df_portfolio = build_vs_last_columns(df)
+    df_portfolio = df_portfolio.tail(1)
+    return df_portfolio
+
+def build_stock_performance(df):
+    df_stock = build_vs_last_columns(df)
+    last_date = df_stock.loc[len(df_stock)-1, 'Date']
+    df_stock = df_stock[df_stock['Date'] == last_date]
+    df_stock = df_stock[['Ticker', 'Close', 'Date', 'Quantity', 'Value', 'vs last', 'vs last %']]
+    return df_stock
 
 def save_graph(df, title):
     fig, ax = plt.subplots(1, 1, figsize=(6, 4))
@@ -60,6 +71,16 @@ def save_graph(df, title):
     # plt.show()
     plt.savefig('/Users/austin/workspace/Scripts/src/Scripts/stock_portfolio/images/'+title+'.png')
 
+def convert_to_html(df):
+    return df.to_html(
+        index=False,
+        formatters={
+            'Close': '${0:,.2f}'.format,
+            'Value': '${0:,.2f}'.format,
+            'vs last': '${0:,.2f}'.format,
+            'vs last %': '{:,.2%}'.format
+        }
+    )
 
 def main():
     print("start")
@@ -71,26 +92,33 @@ def main():
     df = data_retriever.gather_stock_quotes(six_months_ago, file_path)
 
     # Weekly
+    print('## Weekly Data')
     df_weekly_data = filter_t8_weeks_stock_quotes(df)
+    print(df_weekly_data)
     df_weekly_agg = aggregate_dataframe(df_weekly_data)
     print(df_weekly_agg)
     save_graph(df_weekly_agg, 'T8_Weekly_Performance')
     df_weekly_portfolio = build_portfolio_performance(df_weekly_agg)
     print(df_weekly_portfolio)
+    df_weekly_stock = build_stock_performance(df_weekly_data)
+    print(df_weekly_stock)
 
     # Monthly
-    df_monthly_portfolio = filter_t6_months_stock_quotes(df)
-    df_monthly_agg = aggregate_dataframe(df_monthly_portfolio)
+    print('## Monthly Data')
+    df_monthly_data = filter_t6_months_stock_quotes(df)
+    df_monthly_agg = aggregate_dataframe(df_monthly_data)
     print(df_monthly_agg)
     save_graph(df_monthly_agg, 'T6_Monthly_Performance')
     df_monthly_portfolio = build_portfolio_performance(df_monthly_agg)
     print(df_monthly_portfolio)
+    df_monthly_stock = build_stock_performance(df_monthly_data)
+    print(df_monthly_stock)
 
     template_vars = {"title" : "Stock Report",
-                "weekly_portfolio_performance": df_weekly_portfolio.to_html(index=False),
-                "weekly_stock_performance": "Placeholder",
-                "monthly_portfolio_performance": df_monthly_portfolio.to_html(index=False),
-                "monthly_stock_performance": "Placeholder"}
+                "weekly_portfolio_performance": convert_to_html(df_weekly_portfolio),
+                "weekly_stock_performance": convert_to_html(df_weekly_stock),
+                "monthly_portfolio_performance": convert_to_html(df_monthly_portfolio),
+                "monthly_stock_performance": convert_to_html(df_monthly_stock)}
     html_out = template.render(template_vars)
     HTML(
         string=html_out, 

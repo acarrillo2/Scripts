@@ -10,10 +10,13 @@
 * Create weekly portfolio performance df
 * Create monthly portfolio performance df
 
+## 2021-12-22
+* Create weekly stock performance df
+* Create monthly stock performance df
+* Format USD and Percentage values
+
 ## TODO
 * Index against SP500
   * Maybe keep the graph we have, and just have two graphs in the template per page
     * One with indexed values 
     * One with RAW values on a chart
-* Create weekly stock performance df
-* Create monthly stock performance df
