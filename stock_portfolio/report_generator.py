@@ -30,6 +30,19 @@ def aggregate_dataframe(df):
     df = df[["Value"]]
     return df.groupby(df.index).sum()
 
+def build_portfolio_performance(df):
+    df_portfolio = df.reset_index()
+    df_portfolio.drop(inplace=True, columns=['index'])
+    df_portfolio['vs last'] = 0
+    df_portfolio['vs last %'] = 0
+    for i in range(len(df)):
+        if i == 0:
+            pass
+        else:
+            df_portfolio.loc[i, 'vs last'] = df_portfolio.loc[i, 'Value'] - df_portfolio.loc[i-1, 'Value']
+            df_portfolio.loc[i, 'vs last %'] = round(((df_portfolio.loc[i, 'Value'] - df_portfolio.loc[i-1, 'Value']) / df_portfolio.loc[i-1, 'Value']) * 100, 1)
+    return df_portfolio.tail(1)
+
 
 def save_graph(df, title):
     fig, ax = plt.subplots(1, 1, figsize=(6, 4))
@@ -58,27 +71,26 @@ def main():
     df = data_retriever.gather_stock_quotes(six_months_ago, file_path)
 
     # Weekly
-    df_weekly_portfolio = filter_t8_weeks_stock_quotes(df)
-    df_weekly_agg = aggregate_dataframe(df_weekly_portfolio)
+    df_weekly_data = filter_t8_weeks_stock_quotes(df)
+    df_weekly_agg = aggregate_dataframe(df_weekly_data)
     print(df_weekly_agg)
     save_graph(df_weekly_agg, 'T8_Weekly_Performance')
+    df_weekly_portfolio = build_portfolio_performance(df_weekly_agg)
+    print(df_weekly_portfolio)
 
     # Monthly
     df_monthly_portfolio = filter_t6_months_stock_quotes(df)
     df_monthly_agg = aggregate_dataframe(df_monthly_portfolio)
     print(df_monthly_agg)
     save_graph(df_monthly_agg, 'T6_Monthly_Performance')
+    df_monthly_portfolio = build_portfolio_performance(df_monthly_agg)
+    print(df_monthly_portfolio)
 
     template_vars = {"title" : "Stock Report",
-                "weekly_portfolio_performance": "Placeholder",
+                "weekly_portfolio_performance": df_weekly_portfolio.to_html(index=False),
                 "weekly_stock_performance": "Placeholder",
-                "monthly_stock_performance": "Placeholder",
+                "monthly_portfolio_performance": df_monthly_portfolio.to_html(index=False),
                 "monthly_stock_performance": "Placeholder"}
-    # template_vars = {"title" : "Stock Report",
-    #             "weekly_portfolio_performance": df_us_daily.to_html(index=False),
-    #             "weekly_stock_performance": df_us_weekly.to_html(index=False),
-    #             "monthly_stock_performance": df_wa_daily.to_html(index=False),
-    #             "monthly_stock_performance": df_wa_weekly.to_html(index=False)}
     html_out = template.render(template_vars)
     HTML(
         string=html_out, 
