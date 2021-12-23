@@ -14,9 +14,6 @@
 * Create weekly stock performance df
 * Create monthly stock performance df
 * Format USD and Percentage values
+* Index against SP500
 
 ## TODO
-* Index against SP500
-  * Maybe keep the graph we have, and just have two graphs in the template per page
-    * One with indexed values 
-    * One with RAW values on a chart

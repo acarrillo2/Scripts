@@ -3,7 +3,6 @@ from utils import date_generator
 from data_retriever import data_retriever
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
-import matplotlib.dates as mdates
 
 from jinja2 import Environment, FileSystemLoader
 from weasyprint import HTML
@@ -43,11 +42,6 @@ def build_vs_last_columns(df):
             df_vs_last.loc[i, 'vs last %'] = ((df_vs_last.loc[i, 'Value'] - df_vs_last.loc[i-1, 'Value']) / df_vs_last.loc[i-1, 'Value'])
     return df_vs_last
 
-def build_portfolio_performance(df):
-    df_portfolio = build_vs_last_columns(df)
-    df_portfolio = df_portfolio.tail(1)
-    return df_portfolio
-
 def build_stock_performance(df):
     df_stock = build_vs_last_columns(df)
     last_date = df_stock.loc[len(df_stock)-1, 'Date']
@@ -55,20 +49,30 @@ def build_stock_performance(df):
     df_stock = df_stock[['Ticker', 'Close', 'Date', 'Quantity', 'Value', 'vs last', 'vs last %']]
     return df_stock
 
-def save_graph(df, title):
+def build_index_performance(df_index, df_portfolio):
+    df_index['S&P 500'] = 100
+    df_index['Portfolio'] = 100
+    df_index['p vs last'] = df_portfolio['vs last']
+    df_index['p vs last %'] = df_portfolio['vs last %']
+    for i in range(len(df_index)):
+        if i == 0:
+            pass
+        else:
+            df_index.loc[i, 'S&P 500'] = (df_index.loc[i, 'vs last %'] * df_index.loc[i-1, 'S&P 500']) + df_index.loc[i-1, 'S&P 500']
+            df_index.loc[i, 'Portfolio'] = (df_index.loc[i, 'p vs last %'] * df_index.loc[i-1, 'Portfolio']) + df_index.loc[i-1, 'Portfolio']
+    df_index.set_index(['Date'], inplace=True)
+    df_index.index.name = None
+    df_index = df_index[['S&P 500', 'Portfolio']]
+    return df_index
+
+def save_graph(df, title, currency=False):
     fig, ax = plt.subplots(1, 1, figsize=(6, 4))
-    df.plot(kind='line', title=title,
-            color='blue', ax=ax)
-
-    fmt = '${x:,.0f}'
-    tick = mtick.StrMethodFormatter(fmt)
-    ax.yaxis.set_major_formatter(tick) 
-    ## This kept spitting out random dates in 1977, maybe input data is bad?
-    # myFmt = mdates.DateFormatter('%Y-%m-%d')
-    # ax.xaxis.set_minor_formatter(myFmt)
+    df.plot(kind='line', title=title,ax=ax)
+    if currency == True:
+        fmt = '${x:,.0f}'
+        tick = mtick.StrMethodFormatter(fmt)
+        ax.yaxis.set_major_formatter(tick)
     plt.xticks(rotation=25)
-
-    # plt.show()
     plt.savefig('/Users/austin/workspace/Scripts/src/Scripts/stock_portfolio/images/'+title+'.png')
 
 def convert_to_html(df):
@@ -83,36 +87,37 @@ def convert_to_html(df):
     )
 
 def main():
-    print("start")
     plt.close('all')
     env = Environment(loader=FileSystemLoader('/'))
     template = env.get_template("/Users/austin/workspace/Scripts/src/Scripts/stock_portfolio/html/master_template.html")
     file_path = "stock_portfolio/portfolio_data/portfolio_small.csv"
     six_months_ago = date_generator.get_six_months_ago().strftime("%Y-%m-%d")
     df = data_retriever.gather_stock_quotes(six_months_ago, file_path)
+    df_sp500 = data_retriever.get_single_stock_quote(six_months_ago, "SPY")
 
     # Weekly
-    print('## Weekly Data')
     df_weekly_data = filter_t8_weeks_stock_quotes(df)
-    print(df_weekly_data)
+    df_weekly_sp500 = filter_t8_weeks_stock_quotes(df_sp500)
     df_weekly_agg = aggregate_dataframe(df_weekly_data)
-    print(df_weekly_agg)
-    save_graph(df_weekly_agg, 'T8_Weekly_Performance')
-    df_weekly_portfolio = build_portfolio_performance(df_weekly_agg)
-    print(df_weekly_portfolio)
+    save_graph(df_weekly_agg, 'T8_Weekly_Performance', currency=True)
+    df_weekly_vs_last = build_vs_last_columns(df_weekly_agg)
+    df_weekly_portfolio = df_weekly_vs_last.tail(1)
     df_weekly_stock = build_stock_performance(df_weekly_data)
-    print(df_weekly_stock)
+    df_weekly_sp500_vs_last = build_vs_last_columns(df_weekly_sp500)
+    df_weekly_index = build_index_performance(df_weekly_sp500_vs_last, df_weekly_vs_last)
+    save_graph(df_weekly_index, 'T8_Weekly_Indexed_Performance')
 
     # Monthly
-    print('## Monthly Data')
     df_monthly_data = filter_t6_months_stock_quotes(df)
+    df_monthly_sp500 = filter_t6_months_stock_quotes(df_sp500)
     df_monthly_agg = aggregate_dataframe(df_monthly_data)
-    print(df_monthly_agg)
-    save_graph(df_monthly_agg, 'T6_Monthly_Performance')
-    df_monthly_portfolio = build_portfolio_performance(df_monthly_agg)
-    print(df_monthly_portfolio)
+    save_graph(df_monthly_agg, 'T6_Monthly_Performance', currency=True)
+    df_monthly_vs_last = build_vs_last_columns(df_monthly_agg)
+    df_monthly_portfolio = df_monthly_vs_last.tail(1)
     df_monthly_stock = build_stock_performance(df_monthly_data)
-    print(df_monthly_stock)
+    df_monthly_sp500_vs_last = build_vs_last_columns(df_monthly_sp500)
+    df_monthly_index = build_index_performance(df_monthly_sp500_vs_last, df_monthly_vs_last)
+    save_graph(df_monthly_index, 'T6_Monthly_Indexed_Performance')
 
     template_vars = {"title" : "Stock Report",
                 "weekly_portfolio_performance": convert_to_html(df_weekly_portfolio),
