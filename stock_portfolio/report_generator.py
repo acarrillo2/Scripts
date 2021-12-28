@@ -162,8 +162,8 @@ def main():
     html_out = template.render(template_vars)
     HTML(
         string=html_out, 
-        base_url='/Users/austin/workspace/Scripts/src/Scripts/stock_portfolio/').write_pdf("/Users/austin/workspace/Scripts/src/Scripts/stock_portfolio/report.pdf", 
-        stylesheets=['/Users/austin/workspace/Scripts/src/Scripts/stock_portfolio/css/style.css']
+        base_url=os.getcwd() + 'stock_portfolio').write_pdf(os.getcwd() + '/stock_portfolio/report.pdf', 
+        stylesheets=[os.getcwd() + '/stock_portfolio/css/style.css']
         )
 
     
