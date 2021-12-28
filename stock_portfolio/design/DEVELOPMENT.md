@@ -16,4 +16,14 @@
 * Format USD and Percentage values
 * Index against SP500
 
+## 2021-12-23
+* Have a section with the 'vs last' value be the difference between begining and end of period
+  * Add to this a bps column to indicate individual stock's contribution to miss/goal
+
+## 2021-12-28
+* Make code platform independent
+
 ## TODO
+* Add colors for positive and negative cells
+* Winners / losers chart
+  * Have a graph with biggest losers?

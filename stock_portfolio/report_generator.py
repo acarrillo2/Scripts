@@ -1,4 +1,4 @@
-import pandas as pd
+import os
 from utils import date_generator
 from data_retriever import data_retriever
 import matplotlib.pyplot as plt
@@ -47,7 +47,7 @@ def build_stock_performance(df):
     last_date = df_stock.loc[len(df_stock)-1, 'Date']
     df_stock = df_stock[df_stock['Date'] == last_date]
     df_stock = df_stock[['Ticker', 'Close', 'Date', 'Quantity', 'Value', 'vs last', 'vs last %']]
-    return df_stock
+    return df_stock.sort_values(by=['Value'], ascending=False)
 
 def build_index_performance(df_index, df_portfolio):
     df_index['S&P 500'] = 100
@@ -65,6 +65,32 @@ def build_index_performance(df_index, df_portfolio):
     df_index = df_index[['S&P 500', 'Portfolio']]
     return df_index
 
+def build_t8_stock_performance(df, df_t8_weekly_portfolio):
+    df.reset_index(inplace=True)
+    first_date = df.loc[0, 'Date']
+    last_date = df.loc[len(df)-1, 'Date']
+    df = df[(df['Date'] == first_date) | (df['Date'] == last_date)]
+    df = build_vs_last_columns(df)
+    df = df[['Ticker', 'Close', 'Date', 'Quantity', 'Value', 'vs last', 'vs last %']]
+    df = df[df['Date'] == last_date]
+    df['% of tot'] = df['vs last'] / df_t8_weekly_portfolio.loc[1, 'vs last']
+    df['bps'] = round(df['% of tot'] * df_t8_weekly_portfolio.loc[1, 'vs last %'] * 10000,0)
+    if (df_t8_weekly_portfolio.loc[1, 'vs last'] < 0):
+        df.sort_values(by=['bps'], ascending=True, inplace=True)
+    else:
+        df.sort_values(by=['bps'], ascending=False, inplace=True)
+    df.drop(columns=['% of tot'], inplace=True)
+    return df
+
+def build_t8_portfolio_performance(df):
+    df.reset_index(inplace=True)
+    first_date = df.loc[0, 'index']
+    last_date = df.loc[len(df)-1, 'index']
+    df = df[(df['index'] == first_date) | (df['index'] == last_date)]
+    df = build_vs_last_columns(df)
+    df = df[['Value', 'vs last', 'vs last %']]
+    return df[df.index.isin([1])]
+
 def save_graph(df, title, currency=False):
     fig, ax = plt.subplots(1, 1, figsize=(6, 4))
     df.plot(kind='line', title=title,ax=ax)
@@ -73,7 +99,7 @@ def save_graph(df, title, currency=False):
         tick = mtick.StrMethodFormatter(fmt)
         ax.yaxis.set_major_formatter(tick)
     plt.xticks(rotation=25)
-    plt.savefig('/Users/austin/workspace/Scripts/src/Scripts/stock_portfolio/images/'+title+'.png')
+    plt.savefig('stock_portfolio/images/'+title+'.png')
 
 def convert_to_html(df):
     return df.to_html(
@@ -82,15 +108,16 @@ def convert_to_html(df):
             'Close': '${0:,.2f}'.format,
             'Value': '${0:,.2f}'.format,
             'vs last': '${0:,.2f}'.format,
-            'vs last %': '{:,.2%}'.format
+            'vs last %': '{:,.2%}'.format,
+            'bps': '{:,.0f}'.format
         }
     )
 
 def main():
     plt.close('all')
-    env = Environment(loader=FileSystemLoader('/'))
-    template = env.get_template("/Users/austin/workspace/Scripts/src/Scripts/stock_portfolio/html/master_template.html")
-    file_path = "stock_portfolio/portfolio_data/portfolio_small.csv"
+    env = Environment(loader=FileSystemLoader(os.getcwd() + '/stock_portfolio/html'))
+    template = env.get_template("master_template.html")
+    file_path = "stock_portfolio/portfolio_data/portfolio.csv"
     six_months_ago = date_generator.get_six_months_ago().strftime("%Y-%m-%d")
     df = data_retriever.gather_stock_quotes(six_months_ago, file_path)
     df_sp500 = data_retriever.get_single_stock_quote(six_months_ago, "SPY")
@@ -106,6 +133,8 @@ def main():
     df_weekly_sp500_vs_last = build_vs_last_columns(df_weekly_sp500)
     df_weekly_index = build_index_performance(df_weekly_sp500_vs_last, df_weekly_vs_last)
     save_graph(df_weekly_index, 'T8_Weekly_Indexed_Performance')
+    df_t8_weekly_portfolio = build_t8_portfolio_performance(df_weekly_agg)
+    df_t8_weekly_stock = build_t8_stock_performance(df_weekly_data, df_t8_weekly_portfolio)
 
     # Monthly
     df_monthly_data = filter_t6_months_stock_quotes(df)
@@ -118,12 +147,18 @@ def main():
     df_monthly_sp500_vs_last = build_vs_last_columns(df_monthly_sp500)
     df_monthly_index = build_index_performance(df_monthly_sp500_vs_last, df_monthly_vs_last)
     save_graph(df_monthly_index, 'T6_Monthly_Indexed_Performance')
+    df_t6_monthly_portfolio = build_t8_portfolio_performance(df_monthly_agg)
+    df_t6_monthly_stock = build_t8_stock_performance(df_monthly_data, df_t6_monthly_portfolio)
 
     template_vars = {"title" : "Stock Report",
-                "weekly_portfolio_performance": convert_to_html(df_weekly_portfolio),
-                "weekly_stock_performance": convert_to_html(df_weekly_stock),
-                "monthly_portfolio_performance": convert_to_html(df_monthly_portfolio),
-                "monthly_stock_performance": convert_to_html(df_monthly_stock)}
+                "weekly_portfolio_performance": convert_to_html(df_t8_weekly_portfolio),
+                "weekly_stock_performance": convert_to_html(df_t8_weekly_stock),
+                "weekly_portfolio_performance_last_week": convert_to_html(df_weekly_portfolio),
+                "weekly_stock_performance_last_week": convert_to_html(df_weekly_stock),
+                "monthly_portfolio_performance": convert_to_html(df_t6_monthly_portfolio),
+                "monthly_stock_performance": convert_to_html(df_t6_monthly_stock),
+                "monthly_portfolio_performance_last_month": convert_to_html(df_monthly_portfolio),
+                "monthly_stock_performance_last_month": convert_to_html(df_monthly_stock)}
     html_out = template.render(template_vars)
     HTML(
         string=html_out, 

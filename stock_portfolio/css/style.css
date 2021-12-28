@@ -10,3 +10,7 @@ th, td {
     padding: 5px;
     text-align: left;
 }
+
+body {
+    font: normal 10px Verdana, Arial, sans-serif;
+}
