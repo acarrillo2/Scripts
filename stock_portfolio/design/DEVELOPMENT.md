@@ -22,6 +22,11 @@
 
 ## 2021-12-28
 * Make code platform independent
+* Set up email
+
+## 2022-01-23
+* Get images working again
+* Get Cron job set up on Desktop
 
 ## TODO
 * Add colors for positive and negative cells

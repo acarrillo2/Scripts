@@ -1,4 +1,5 @@
 import os
+import sys
 from utils import date_generator
 from data_retriever import data_retriever
 import matplotlib.pyplot as plt
@@ -6,6 +7,10 @@ import matplotlib.ticker as mtick
 
 from jinja2 import Environment, FileSystemLoader
 from weasyprint import HTML
+
+sys.path.append('/home/austin/workplace')
+sys.path.append('/Users/austin/workspace')
+from python_modules.email_helper import send_email
 
 def filter_t8_weeks_stock_quotes(df):
     df_max_date = df
@@ -165,6 +170,8 @@ def main():
         base_url=os.getcwd() + 'stock_portfolio').write_pdf(os.getcwd() + '/stock_portfolio/report.pdf', 
         stylesheets=[os.getcwd() + '/stock_portfolio/css/style.css']
         )
+    send_email(recipients=['acarrillogu@gmail.com'], CC=[], BCC=[], subject="Weekly Stock Report", 
+    message="Weekly Stock Report", file_list=[os.getcwd() + '/stock_portfolio/report.pdf'])
 
     
 
