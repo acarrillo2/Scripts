@@ -4,7 +4,7 @@ from utils import date_generator
 from data_retriever import data_retriever
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mtick
-
+import pandas as pd
 from jinja2 import Environment, FileSystemLoader
 from weasyprint import HTML
 
@@ -16,19 +16,27 @@ def filter_t8_weeks_stock_quotes(df):
     df_max_date = df
     df_max_date['Week_Number'] = df_max_date.index.isocalendar().week
     df_max_date['Date'] = df_max_date.index
-    df_max_date = df.groupby(['Week_Number']).max()
-    t8_week_end_dates = df_max_date['Date'].tolist()
-    t8_week_end_dates = t8_week_end_dates[-8:]
-    return df[df.index.isin(t8_week_end_dates)]
+    pd.set_option("display.max_rows", None, "display.max_columns", None)
+    df_max_date = df_max_date.groupby(['Week_Number']).max()
+    df_max_date.reset_index(inplace=True)
+    df_max_date.index = df_max_date['Date']
+    df_max_date.sort_index(inplace=True)
+    t8_week_end_dates = df_max_date.index.tolist()
+    t8_week_end_dates = t8_week_end_dates[-8:]   
+    return df[df.index.isin(t8_week_end_dates)]  
 
 def filter_t6_months_stock_quotes(df):
     df_max_date = df
     df_max_date['Month'] = df_max_date.index.month
     df_max_date['Date'] = df_max_date.index
     df_max_date = df.groupby(['Month']).max()
+    df_max_date.reset_index(inplace=True)
+    df_max_date.index = df_max_date['Date']
+    df_max_date.sort_index(inplace=True)
     t6_month_end_dates = df_max_date['Date'].tolist()
     t6_month_end_dates = t6_month_end_dates[-6:]
-    return df[df.index.isin(t6_month_end_dates)]
+    return df[df.index.isin(t6_month_end_dates)] # So this will give me highest months not latest months
+                                                 # We need to do a similar thing as we did in week so that we sort by date then filter
 
 def aggregate_dataframe(df):
     df = df[["Value"]]

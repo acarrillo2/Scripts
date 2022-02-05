@@ -28,6 +28,9 @@
 * Get images working again
 * Get Cron job set up on Desktop
 
+## 2022-02-05
+* Bugfix: data not coming after EOY
+
 ## TODO
 * Add colors for positive and negative cells
 * Winners / losers chart
