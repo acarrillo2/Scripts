@@ -1,6 +1,7 @@
 import time
 from selenium import webdriver
 import pandas as pd
+from datetime import datetime
 
 def get_parcel_info(parcel):
     # Website says it throttles at 100 requests / 15min but I have gotten throttled at 81
@@ -9,6 +10,11 @@ def get_parcel_info(parcel):
     browser = webdriver.Chrome()
     browser.get("https://payment.kingcounty.gov/Home/Index?app=PropertyTaxes")
     time.sleep(7)
+    if browser.find_element("xpath", "/html/body").text == "API calls quota exceeded! maximum admitted 1000 per 12h.":
+        print(datetime.now())
+        print("API calls quota exceeded, waiting for 12 hours...")
+        time.sleep(43200)
+        browser.get("https://payment.kingcounty.gov/Home/Index?app=PropertyTaxes")
     browser.find_element("id", 'searchParcel').send_keys(parcel)
     time.sleep(3)
     browser.find_element("xpath", '//*[@id="ec-tenant-app"]/div/div/div[2]/div[1]/div[1]/form/div/span/button').click()
@@ -25,7 +31,7 @@ def get_parcel_info(parcel):
     return tax_account_number, status, payer_address
 
 
-parcel_data = pd.read_csv('kc_tax_scraper/LoyalHeightsRemaining_20230912.csv')
+parcel_data = pd.read_csv('kc_tax_scraper/98117.csv')
 parcel_list = parcel_data["Parcel number"].tolist()
 parcel_data["Tax account number"] = ""
 parcel_data["Payer address"] = ""
@@ -36,6 +42,7 @@ for index, row in parcel_data.iterrows():
     try:
         tax_account_number, status, payer_address = get_parcel_info(row["Parcel number"])
     except KeyboardInterrupt:
+        parcel_data.to_csv('kc_tax_scraper/out.csv')
         exit()
     except:
         print("Error pulling parcel: " + str(row["Parcel number"]))
