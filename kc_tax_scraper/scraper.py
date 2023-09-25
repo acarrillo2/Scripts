@@ -10,10 +10,19 @@ def get_parcel_info(parcel):
     browser = webdriver.Chrome()
     browser.get("https://payment.kingcounty.gov/Home/Index?app=PropertyTaxes")
     time.sleep(7)
-    if browser.find_element("xpath", "/html/body").text == "API calls quota exceeded! maximum admitted 1000 per 12h.":
+    body_text = browser.find_element("xpath", "/html/body").text
+
+    if "API calls quota exceeded!" in body_text:
         print(datetime.now())
-        print("API calls quota exceeded, waiting for 12 hours...")
-        time.sleep(43200)
+        print(body_text)
+        sleep_time = 3600
+        if body_text == "API calls quota exceeded! maximum admitted 10000 per 7d.":
+            sleep_time = 43200
+        elif body_text == "API calls quota exceeded! maximum admitted 1000 per 12h.":
+            sleep_time = 7200
+        sleep_time_in_hours = sleep_time / 60 / 60
+        print("Waiting " + str(sleep_time_in_hours) + " hrs...")
+        time.sleep(sleep_time)
         browser.get("https://payment.kingcounty.gov/Home/Index?app=PropertyTaxes")
     browser.find_element("id", 'searchParcel').send_keys(parcel)
     time.sleep(3)
@@ -31,7 +40,7 @@ def get_parcel_info(parcel):
     return tax_account_number, status, payer_address
 
 
-parcel_data = pd.read_csv('kc_tax_scraper/98117.csv')
+parcel_data = pd.read_csv('kc_tax_scraper/98117_remaining.csv')
 parcel_list = parcel_data["Parcel number"].tolist()
 parcel_data["Tax account number"] = ""
 parcel_data["Payer address"] = ""
